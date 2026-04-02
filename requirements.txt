@@ -4,7 +4,6 @@ fastapi-cli
 uvicorn
 sqlalchemy
 pydantic
-sqlite3
 pyYAML
 python-dotenv
 httpx
