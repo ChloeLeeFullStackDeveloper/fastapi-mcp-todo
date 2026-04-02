@@ -117,12 +117,12 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     return {"message": "Todo deleted successfully"}
 
 # Entry point to run the app with Uvicorn
-if __name__ == "__main__":
-    import uvicorn
-    mcp = FastApiMCP(app, include_operations=["get_all_todos", "delete_todo", "create_todo", "update_todo", "get_todo"])
-    mcp.mount()
+# if __name__ == "__main__":
+import uvicorn
+mcp = FastApiMCP(app, include_operations=["get_all_todos", "delete_todo", "create_todo", "update_todo", "get_todo"])
+mcp.mount()
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+# uvicorn.run(app, host="127.0.0.1", port=8000)
 
 # Run the app: uvicorn main:app --reload
 # Visit the API docs: http://localhost:8000/docs
