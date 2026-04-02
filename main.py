@@ -2,10 +2,10 @@
 FastAPI Todo Application
 A simple REST API for managing todo items using FastAPI and SQLite.
 """
-
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -21,7 +21,6 @@ Base = declarative_base()
 # SQLAlchemy model for the todos table
 class TodoItem(Base):
     __tablename__ = "todos"
-
     todo_id = Column(Integer, primary_key=True, index=True)
     content = Column(String, index=True)
     completed = Column(Boolean, default=False)
@@ -58,13 +57,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# CORS middleware - allow portfolio site to call this API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # GET route for root endpoint (homepage)
 @app.get("/", response_class=HTMLResponse)
 def root():
     return "<h2>Welcome to the Todo API!</h2>"
 
 # GET route to return all todos (supports pagination)
-@app.get("/todos/", response_model=List[Todo], operation_id="get_all_todos")
+@app.get("/todos", response_model=List[Todo], operation_id="get_all_todos")
+@app.get("/todos/", response_model=List[Todo], include_in_schema=False)
 def read_todos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all todo items with optional pagination."""
     todos = db.query(TodoItem).offset(skip).limit(limit).all()
@@ -79,8 +88,9 @@ def read_todo(todo_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Todo not found")
     return todo
 
-# POST route to create a new todo
-@app.post("/todos/", response_model=Todo, operation_id="create_todo")
+# POST route to create a new todo - accepts both 'title' and 'content' fields
+@app.post("/todos", response_model=Todo, operation_id="create_todo")
+@app.post("/todos/", response_model=Todo, include_in_schema=False)
 def create_todo(todo: TodoCreate, db: Session = Depends(get_db)):
     """Create a new todo item."""
     db_todo = TodoItem(**todo.model_dump())
@@ -96,10 +106,8 @@ def update_todo(todo_id: int, todo: TodoCreate, db: Session = Depends(get_db)):
     db_todo = db.query(TodoItem).filter(TodoItem.todo_id == todo_id).first()
     if db_todo is None:
         raise HTTPException(status_code=404, detail="Todo not found")
-
     for key, value in todo.model_dump().items():
         setattr(db_todo, key, value)
-
     db.commit()
     db.refresh(db_todo)
     return db_todo
@@ -111,18 +119,10 @@ def delete_todo(todo_id: int, db: Session = Depends(get_db)):
     db_todo = db.query(TodoItem).filter(TodoItem.todo_id == todo_id).first()
     if db_todo is None:
         raise HTTPException(status_code=404, detail="Todo not found")
-
     db.delete(db_todo)
     db.commit()
     return {"message": "Todo deleted successfully"}
 
-# Entry point to run the app with Uvicorn
-# if __name__ == "__main__":
 import uvicorn
 mcp = FastApiMCP(app, include_operations=["get_all_todos", "delete_todo", "create_todo", "update_todo", "get_todo"])
 mcp.mount()
-
-# uvicorn.run(app, host="127.0.0.1", port=8000)
-
-# Run the app: uvicorn main:app --reload
-# Visit the API docs: http://localhost:8000/docs
